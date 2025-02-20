@@ -3,6 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: backend
+  namespace: default
 spec:
   selector:
     matchLabels:
@@ -14,28 +15,50 @@ spec:
     spec:
       containers:
         - name: backend
-          # 여러분의 backend image 주소를 입력해주세요.
-          image: krmp-d2hub-idock.9rum.cc/dev-test/repo_f90833d354c6
+          image: ghcr.io/your-repo/nestjs-app:latest
+          ports:
+            - containerPort: 8080
           env:
-            - name: TZ
-              value: Asia/Seoul
-            - name: DATABASE_URL
-              value: jdbc:mariadb://mariadb:3306/krampoline
-          resources:
-            requests:
-              memory: 1Gi
-          readinessProbe:
-            httpGet:
-              path: /api/test
-              port: 8080
+            - name: NODE_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: postgres-config
+                  key: NODE_ENV
+            - name: SERVER_PORT
+              value: "8080"
+            - name: POSTGRES_HOST
+              value: postgres
+            - name: POSTGRES_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: postgres-config
+                  key: POSTGRES_PORT
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: postgres-config
+                  key: POSTGRES_DB
+            - name: POSTGRES_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USERNAME
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: backend
+  name: backend-service
+  namespace: default
 spec:
+  type: ClusterIP
   selector:
     app: backend
   ports:
-    - port: 8080
+    - protocol: TCP
+      port: 8080 # 여기서도 8080으로 맞춰줌
       targetPort: 8080
